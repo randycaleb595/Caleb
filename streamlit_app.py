@@ -146,6 +146,4 @@ if st.button("Translate", use_container_width=True, type="primary"):
                 st.error(f"❌ HTTP {resp.status_code}: {resp.text}")
         except Exception as e:
             st.error(f"❌ {e}")
-```
 
-Both versions are now a **Kiswahili translator** — pick any source language (or auto-detect), pick a target, hit Translate, and swap directions with one click. The web app saves history for signed-in users; the Streamlit script keeps recent translations in the sidebar.
