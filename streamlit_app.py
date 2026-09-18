@@ -4,12 +4,6 @@ import requests
 APP_DOMAIN = "https://nexusai123.base44.app"
 TRANSLATE_URL = f"{APP_DOMAIN}/functions/translateText"
 
-VALID_USERS = {
-    "ceasura@tutor.com": "ceasura123",
-    "teacher@tutor.com": "teacher456",
-    "student@tutor.com": "math2026",
-}
-
 LANGUAGES = [
     "Auto-detect", "Kiswahili", "English", "French", "Chinese", "Arabic",
     "German", "Spanish", "Portuguese", "Hindi", "Russian", "Japanese",
@@ -17,7 +11,7 @@ LANGUAGES = [
     "Yoruba", "Zulu",
 ]
 
-st.set_page_config(page_title="Ceasura Tutor — Kiswahili Translator", page_icon="🟢", layout="wide")
+st.set_page_config(page_title="Ceasura Tutor", page_icon="🟢", layout="wide")
 
 st.markdown("""
 <style>
@@ -45,24 +39,6 @@ if "target_lang" not in st.session_state: st.session_state.target_lang = "Kiswah
 if "src_text" not in st.session_state: st.session_state.src_text = ""
 if "tgt_text" not in st.session_state: st.session_state.tgt_text = ""
 
-# ===================== SIGN-IN GATE =====================
-if not st.session_state.authed:
-    st.markdown("<style> [data-testid='stSidebar'] {display:none;} </style>", unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align:center;color:#00FF00;letter-spacing:0.3em'>CEASURA TUTOR</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;color:#00FF0080'>Kiswahili Translator</p>", unsafe_allow_html=True)
-
-    with st.form("login", clear_on_submit=False):
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Sign In", use_container_width=True)
-        if submitted:
-            if email in VALID_USERS and VALID_USERS[email] == password:
-                st.session_state.authed = True
-                st.session_state.user_email = email
-                st.rerun()
-            else:
-                st.error("❌ Invalid email or password.")
-    st.stop()
 
 # ===================== SIDEBAR =====================
 with st.sidebar:
