@@ -11,7 +11,7 @@ LANGUAGES = [
     "Yoruba", "Zulu",
 ]
 
-st.set_page_config(page_title="Ceasura Tutor", page_icon="🟢", layout="wide")
+st.set_page_config(page_title="Ceasura Tutor — Kiswahili Translator", page_icon="🟢", layout="wide")
 
 st.markdown("""
 <style>
@@ -31,24 +31,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Session state init ---
-if "authed" not in st.session_state: st.session_state.authed = False
-if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "history" not in st.session_state: st.session_state.history = []
 if "source_lang" not in st.session_state: st.session_state.source_lang = "Auto-detect"
 if "target_lang" not in st.session_state: st.session_state.target_lang = "Kiswahili"
 if "src_text" not in st.session_state: st.session_state.src_text = ""
-if "tgt_text" not in st.session_state: st.session_state.tgt_text = ""
-
+if "translation_result" not in st.session_state: st.session_state.translation_result = ""
 
 # ===================== SIDEBAR =====================
 with st.sidebar:
-    st.markdown(f"<small style='color:#00FF0080'>👋 {st.session_state.user_email}</small>", unsafe_allow_html=True)
     st.markdown("## 🟢 CEASURA TUTOR")
     st.markdown("<small style='color:#00FF0080'>KISWAHILI TRANSLATOR</small>", unsafe_allow_html=True)
     st.markdown("---")
     if st.button("➕ New Translation", use_container_width=True):
         st.session_state.src_text = ""
-        st.session_state.tgt_text = ""
+        st.session_state.translation_result = ""
         st.rerun()
     st.markdown("---")
     if st.session_state.history:
@@ -56,16 +52,10 @@ with st.sidebar:
         for i, h in enumerate(st.session_state.history):
             if st.button(h["source"][:42], key=f"h{i}", use_container_width=True):
                 st.session_state.src_text = h["source"]
-                st.session_state.tgt_text = h["target"]
+                st.session_state.translation_result = h["target"]
                 st.session_state.source_lang = h["source_lang"]
                 st.session_state.target_lang = h["target_lang"]
                 st.rerun()
-    st.markdown("---")
-    if st.button("🚪 Log Out", use_container_width=True):
-        st.session_state.authed = False
-        st.session_state.user_email = ""
-        st.session_state.history = []
-        st.rerun()
 
 # ===================== MAIN =====================
 st.markdown("<h1 style='text-align:center;color:#00FF00;letter-spacing:0.3em'>CEASURA TUTOR</h1>", unsafe_allow_html=True)
@@ -83,7 +73,7 @@ with col2:
         cur_tgt = st.session_state.target_lang
         st.session_state.source_lang = cur_tgt if cur_tgt != "Auto-detect" else "Kiswahili"
         st.session_state.target_lang = cur_src if cur_src != "Auto-detect" else "Kiswahili"
-        st.session_state.src_text, st.session_state.tgt_text = st.session_state.tgt_text, st.session_state.src_text
+        st.session_state.src_text, st.session_state.translation_result = st.session_state.translation_result, st.session_state.src_text
         st.rerun()
 with col3:
     st.selectbox("To", [l for l in LANGUAGES if l != "Auto-detect"], key="target_lang")
@@ -93,9 +83,12 @@ st.markdown("")
 # Panels
 pcol1, pcol2 = st.columns(2)
 with pcol1:
-    st.text_area("Text to translate", height=200, key="src_text", placeholder="Type text to translate...", label_visibility="collapsed")
+    st.text_area("Text to translate", height=200, key="src_text",
+                 placeholder="Type text to translate...", label_visibility="collapsed")
 with pcol2:
-    st.text_area("Translation", height=200, key="tgt_text", placeholder="Translation appears here...", label_visibility="collapsed")
+    st.text_area("Translation", height=200,
+                 value=st.session_state.translation_result,
+                 placeholder="Translation appears here...", label_visibility="collapsed")
 
 if st.button("Translate", use_container_width=True, type="primary"):
     src = st.session_state.src_text.strip()
@@ -110,7 +103,7 @@ if st.button("Translate", use_container_width=True, type="primary"):
             }, timeout=120)
             if resp.status_code == 200:
                 translation = resp.json().get("translation", "")
-                st.session_state.tgt_text = translation
+                st.session_state.translation_result = translation
                 st.session_state.history.insert(0, {
                     "source": src, "target": translation,
                     "source_lang": st.session_state.source_lang,
@@ -122,4 +115,3 @@ if st.button("Translate", use_container_width=True, type="primary"):
                 st.error(f"❌ HTTP {resp.status_code}: {resp.text}")
         except Exception as e:
             st.error(f"❌ {e}")
-
