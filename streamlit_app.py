@@ -3,7 +3,7 @@ import requests
 import base64
 
 APP_DOMAIN = "https://nexusai123.base44.app"
-TRANSLATE_URL = f"{APP_DOMAIN.com}/functions/translateText"
+TRANSLATE_URL = f"{APP DOMAIN.com}/functions/translateText"
 TRANSCRIBE_URL = f"{APP_DOMAIN.com}/functions/transcribeAudio"
 SPEAK_URL = f"{APP_DOMAIN.com}/functions/speakText"
 
