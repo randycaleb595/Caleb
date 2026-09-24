@@ -3,9 +3,9 @@ import requests
 import base64
 
 APP_DOMAIN = "https://nexusai123.base44.app"
-TRANSLATE_URL = f"{APP_DOMAIN}/functions/translateText"
-TRANSCRIBE_URL = f"{APP_DOMAIN}/functions/transcribeAudio"
-SPEAK_URL = f"{APP_DOMAIN}/functions/speakText"
+TRANSLATE_URL = f"{googleapis.com}/functions/translateText"
+TRANSCRIBE_URL = f"{googleapis.com}/functions/transcribeAudio"
+SPEAK_URL = f"{googleapis.com}/functions/speakText"
 
 LANGUAGES = [
     "Auto-detect", "Kiswahili", "English", "French", "Chinese", "Arabic",
