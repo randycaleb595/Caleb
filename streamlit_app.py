@@ -1,196 +1,291 @@
-import streamlit as st
-import requests
 import base64
+import hashlib
+import html
+import requests
+import streamlit as st
 
-APP_DOMAIN = "https://nexusai123.base44.app"
-TRANSLATE_URL = f"{APP_DOMAIN}/functions/translateText"
-TRANSCRIBE_URL = f"{APP_DOMAIN}/functions/transcribeAudio"
-SPEAK_URL = f"{APP_DOMAIN}/functions/speakText"
-
-# Deep midnight-teal + warm amber
-BG      = "#0A1614"
-CARD    = "#10221F"
-BORDER  = "#2A3F3B"
-ACCENT  = "#F0A93D"
-TEXT    = "#F2EFE6"
-MUTED   = "#8FA9A3"
-
-# 7 major languages — German is the fixed target, so it isn't a source option
+APP_URL = "https://nexusai123.base44.app"
+TARGET = "German"
 SOURCE_LANGUAGES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic"]
-TARGET_LANGUAGE = "German"
 
-st.set_page_config(page_title="Ceasura Tutor — German Translator", page_icon="🟠", layout="wide")
+st.set_page_config(page_title="Deutschefy", page_icon="🇩🇪", layout="centered")
 
-st.markdown(f"""
+THEME = """
 <style>
-  html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-    background-color: {BG} !important; color: {TEXT};
-  }}
-  [data-testid="stSidebar"] {{ background-color: {CARD} !important; }}
-  [data-testid="stSidebar"] * {{ color: {TEXT}; }}
-  h1, h2, h3, h4 {{ color: {ACCENT} !important; }}
-  .stButton>button {{
-    background: {ACCENT}; color: {BG}; font-weight: 700;
-    border: none; border-radius: 8px;
-  }}
-  .stButton>button:hover {{ filter: brightness(1.08); }}
-  .stTextArea>div>div>textarea, .stTextInput>div>div>input {{
-    background: {BG} !important; border: 1px solid {BORDER} !important;
-    color: {TEXT} !important; border-radius: 12px;
-  }}
-  .stTabs [data-baseweb="tab-list"] {{ gap: 8px; }}
-  .stTabs [data-baseweb="tab"] {{ color: {MUTED}; }}
-  .stTabs [aria-selected="true"] {{ color: {ACCENT} !important; }}
-  .stSelectbox div[data-baseweb="select"] > div {{
-    background: {BG} !important; border-color: {BORDER} !important; color: {TEXT} !important;
-  }}
+/* ---------- canvas ---------- */
+.stApp, [data-testid="stAppViewContainer"] { background:
+  radial-gradient(ellipse at 20% 50%, rgba(240,169,61,.05) 0%, transparent 50%),
+  radial-gradient(ellipse at 80% 20%, rgba(46,184,160,.05) 0%, transparent 50%), #0A1614 !important; }
+[data-testid="stHeader"] { background: transparent !important; }
+[data-testid="stSidebar"] { background:#0B1A17 !important; border-right:1px solid rgba(240,169,61,.15); }
+.block-container { padding-top: 1.4rem; }
+
+/* ---------- text ---------- */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stMarkdownContainer"],
+[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
+[data-testid="stWidgetLabel"], [data-testid="stWidgetLabel"] p, label,
+[data-testid="stCaptionContainer"] { color:#EDE7DA; }
+[data-testid="stWidgetLabel"] p, [data-testid="stCaptionContainer"] { color:#94A8A2; font-size:.78rem; }
+[data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 { color:#F0A93D; letter-spacing:.04em; }
+[data-testid="stMarkdownContainer"] em { color:#C8D6D1; }
+[data-testid="stMarkdownContainer"] code { color:#F0A93D; background:rgba(240,169,61,.10); }
+[data-testid="stSpinner"] p { color:#94A8A2; }
+
+/* ---------- inputs ---------- */
+[data-baseweb="select"] > div, [data-baseweb="input"] input, textarea,
+[data-testid="stFileUploaderDropzone"], [data-testid="stAudioInput"] {
+  background:#0F1D1A !important; border-color:#2B4340 !important; color:#EDE7DA !important; }
+[data-baseweb="select"] svg { fill:#94A8A2; }
+[data-baseweb="popover"] [role="listbox"], [data-baseweb="popover"] ul {
+  background:#0F1D1A !important; border:1px solid #2B4340 !important; }
+[data-baseweb="popover"] li, [data-baseweb="popover"] [role="option"] { color:#EDE7DA !important; }
+[data-baseweb="popover"] li:hover, [data-baseweb="popover"] [aria-selected="true"] {
+  background:rgba(240,169,61,.14) !important; }
+[data-testid="stFileUploaderDropzone"] { padding:.55rem .7rem; }
+[data-testid="stFileUploaderDropzone"] span, [data-testid="stFileUploaderDropzone"] small { color:#94A8A2 !important; }
+[data-testid="stFileUploaderDropzone"] button {
+  background:transparent !important; color:#F0A93D !important; border:1px solid rgba(240,169,61,.45) !important; }
+[data-testid="stChatInput"], [data-testid="stChatInput"] > div,
+[data-testid="stChatInputTextArea"] {
+  background:#0F1D1A !important; border-color:#2B4340 !important; color:#EDE7DA !important; }
+[data-testid="stChatInput"] textarea { color:#EDE7DA !important; }
+[data-testid="stChatInput"] textarea::placeholder { color:#6C807B !important; }
+
+/* ---------- buttons ---------- */
+.stButton > button { background:transparent; color:#94A8A2; border:1px solid #2B4340;
+  border-radius:8px; min-height:0; padding:.25rem .7rem; }
+.stButton > button p { font-size:.75rem; }
+.stButton > button:hover { color:#F0A93D; border-color:rgba(240,169,61,.5); background:rgba(240,169,61,.06); }
+.stButton > button:disabled { color:#6C807B; border-color:#22332F; }
+[class*="st-key-opt_"] button { width:100%; justify-content:flex-start; text-align:left; }
+[class*="st-key-opt_"] button p { color:#EDE7DA; font-size:.8rem; }
+
+/* ---------- panels ---------- */
+[data-testid="stVerticalBlockBorderWrapper"] {
+  border:1px solid #2B4340 !important; border-radius:12px; background:rgba(15,29,26,.6); }
+hr { border-color:rgba(240,169,61,.15); }
+pre { background:#0F1D1A !important; border:1px solid #2B4340; }
+
+/* ---------- brand + bubbles ---------- */
+.dfy-brand { color:#F0A93D; font-weight:800; letter-spacing:.3em; }
+.dfy-hero { text-align:center; padding:4rem 1rem 3rem; }
+.dfy-hero h1 { color:#F0A93D; font-weight:800; letter-spacing:.3em; font-size:2.3rem; margin:0 0 .75rem; }
+.dfy-hero p { color:#94A8A2; font-size:.9rem; max-width:28rem; margin:0 auto; }
+.dfy-row { display:flex; margin:.3rem 0; }
+.dfy-bubble { max-width:85%; padding:.6rem 1rem; border-radius:16px; line-height:1.55;
+  font-size:.92rem; color:#EDE7DA; }
+.dfy-user { margin-left:auto; background:rgba(240,169,61,.10); border:1px solid rgba(240,169,61,.25);
+  border-bottom-right-radius:4px; }
+.dfy-de { background:#0F1D1A; border:1px solid #2B4340; border-bottom-left-radius:4px; }
+.dfy-label { font-size:.62rem; text-transform:uppercase; letter-spacing:.18em; margin-bottom:.2rem; color:#94A8A2; }
+.dfy-user .dfy-label { color:rgba(240,169,61,.7); }
+.dfy-kicker { font-size:.62rem; text-transform:uppercase; letter-spacing:.18em; color:#F0A93D; }
+.dfy-muted { color:#94A8A2; font-size:.75rem; }
+.dfy-error { color:#E5604E; font-size:.78rem; }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(THEME, unsafe_allow_html=True)
 
-# --- Session state ---
-if "history" not in st.session_state: st.session_state.history = []
-if "source_lang" not in st.session_state: st.session_state.source_lang = "Auto-detect"
-if "src_text" not in st.session_state: st.session_state.src_text = ""
-if "translation_result" not in st.session_state: st.session_state.translation_result = ""
-if "audio_url" not in st.session_state: st.session_state.audio_url = ""
-if "transcript" not in st.session_state: st.session_state.transcript = ""
 
-# ===================== SIDEBAR =====================
-with st.sidebar:
-    st.markdown(f"## <span style='color:{ACCENT}'>CEASURA TUTOR</span>", unsafe_allow_html=True)
-    st.markdown(f"<small style='color:{MUTED}'>GERMAN TRANSLATOR</small>", unsafe_allow_html=True)
-    st.markdown("---")
-    if st.button("➕ New Translation", use_container_width=True):
-        st.session_state.src_text = ""
-        st.session_state.translation_result = ""
-        st.session_state.audio_url = ""
-        st.session_state.transcript = ""
+# ------------------------------------------------------------- the app's backend (HTTP)
+def call(fn, payload):
+    r = requests.post(f"{APP_URL}/functions/{fn}", json=payload, timeout=180)
+    try:
+        data = r.json()
+    except ValueError:
+        data = {}
+    if not r.ok:
+        raise RuntimeError(data.get("error") or f"{fn} failed ({r.status_code})")
+    return data
+
+
+def src_code(lang):
+    return "auto" if lang == "Auto-detect" else lang
+
+
+# ------------------------------------------------------------- state
+ss = st.session_state
+ss.setdefault("turns", [])
+ss.setdefault("seen_audio", set())
+ss.setdefault("error", "")
+
+
+def reset():
+    ss.turns, ss.error = [], ""
+
+
+def translate(text):
+    ss.error = ""
+    try:
+        with st.spinner("Translating to German…"):
+            res = call("translateText", {"text": text, "source_lang": src_code(ss.source_lang), "target_lang": TARGET})
+        ss.turns.append({
+            "source": text, "source_lang": ss.source_lang, "translation": res["translation"],
+            "audio_url": None, "explanation": None, "questions": None, "answers": {}, "copy": False, "error": "",
+        })
+    except Exception as e:
+        ss.error = str(e)
+
+
+def transcribe(f):
+    raw = f.getvalue()
+    digest = hashlib.md5(raw).hexdigest()
+    if digest in ss.seen_audio:
+        return ""
+    ss.seen_audio.add(digest)
+    data_url = f"data:{f.type or 'audio/wav'};base64,{base64.b64encode(raw).decode()}"
+    try:
+        with st.spinner("Transcribing your audio…"):
+            text = (call("transcribeAudio", {"audio_base64": data_url, "filename": f.name}).get("transcript") or "").strip()
+        if not text:
+            ss.error = "We couldn't hear anything in that clip."
+        return text
+    except Exception as e:
+        ss.error = str(e)
+        return ""
+
+
+def act(t, fn, payload, field, msg):
+    t["error"] = ""
+    try:
+        with st.spinner(msg):
+            t[field] = call(fn, payload).get(field)
+    except Exception as e:
+        t["error"] = str(e)
+
+
+def turn_payload(t):
+    return {"text": t["source"], "translation": t["translation"],
+            "source_lang": src_code(t["source_lang"]), "target_lang": TARGET}
+
+
+# ------------------------------------------------------------- rendering
+def bubble(label, text, kind):
+    body = html.escape(text).replace("\n", "<br>")
+    st.markdown(
+        f'<div class="dfy-row"><div class="dfy-bubble dfy-{kind}">'
+        f'<div class="dfy-label">{html.escape(label)}</div>{body}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def pick(t, qi, oi):
+    t["answers"].setdefault(qi, oi)
+
+
+def render_quiz(i, t):
+    qs, ans = t["questions"], t["answers"]
+    correct = sum(1 for qi, oi in ans.items() if qs[qi]["answer_index"] == oi)
+    with st.container(border=True):
+        h = st.columns([3, 1])
+        h[0].markdown('<div class="dfy-kicker">Practice test</div>', unsafe_allow_html=True)
+        h[1].markdown(f'<div class="dfy-muted" style="text-align:right">{correct} / {len(qs)} correct</div>',
+                      unsafe_allow_html=True)
+        for qi, q in enumerate(qs):
+            st.markdown(f"**{qi + 1}.** {q['question']}")
+            picked = ans.get(qi)
+            for oi, opt in enumerate(q["options"]):
+                mark = ""
+                if picked is not None and oi == q["answer_index"]:
+                    mark = "✅ "
+                elif picked == oi:
+                    mark = "❌ "
+                st.button(mark + opt, key=f"opt_{i}_{qi}_{oi}", disabled=picked is not None,
+                          on_click=pick, args=(t, qi, oi))
+            if picked is not None and q.get("explanation"):
+                st.markdown(f'<div class="dfy-muted">{html.escape(q["explanation"])}</div>', unsafe_allow_html=True)
+        if len(ans) == len(qs):
+            msg = ("Perfect score — well done." if correct == len(qs)
+                   else f"You got {correct} of {len(qs)}. Ask for a new test to try again.")
+            st.markdown(f'<div style="color:#F0A93D;font-size:.8rem">{msg}</div>', unsafe_allow_html=True)
+
+
+def render_turn(i, t):
+    bubble(t["source_lang"], t["source"], "user")
+    bubble(TARGET, t["translation"], "de")
+
+    b = st.columns([1.3, 2.1, 1.2, 1, 2.2], gap="small")
+    if b[0].button("🔊 Audio ready" if t["audio_url"] else "🔊 Listen", key=f"listen_{i}") and not t["audio_url"]:
+        act(t, "speakText", {"text": t["translation"], "lang": TARGET}, "audio_url", "Generating audio…")
         st.rerun()
-    st.markdown("---")
-    if st.session_state.history:
-        st.markdown("#### 🕘 Recent")
-        for i, h in enumerate(st.session_state.history):
-            if st.button(h["source"][:42], key=f"h{i}", use_container_width=True):
-                st.session_state.src_text = h["source"]
-                st.session_state.translation_result = h["target"]
-                st.session_state.audio_url = ""
-                st.session_state.source_lang = h["source_lang"]
-                st.rerun()
+    if b[1].button("💡 Why this translation?", key=f"why_{i}"):
+        act(t, "explainTranslation", turn_payload(t), "explanation", "Explaining…")
+        st.rerun()
+    if b[2].button("🎓 New test" if t["questions"] else "🎓 Test me", key=f"test_{i}"):
+        act(t, "generateQuiz", {**turn_payload(t), "count": 4}, "questions", "Building your test…")
+        t["answers"] = {}
+        if not t["questions"] and not t["error"]:
+            t["error"] = "Couldn't build a test for that one."
+        st.rerun()
+    if b[3].button("📋 Copy", key=f"copy_{i}"):
+        t["copy"] = not t["copy"]
+        st.rerun()
 
-# ===================== MAIN =====================
-st.markdown(
-    f"<h1 style='text-align:center;color:{ACCENT};letter-spacing:0.3em'>CEASURA TUTOR</h1>",
-    unsafe_allow_html=True)
-st.markdown(
-    f"<p style='text-align:center;color:{MUTED}'>Any language → German · with audio</p>",
-    unsafe_allow_html=True)
+    if t["copy"]:
+        st.code(t["translation"], language=None)
+    if t["audio_url"]:
+        st.audio(t["audio_url"])
+    if t["explanation"]:
+        with st.container(border=True):
+            st.markdown('<div class="dfy-kicker">Explanation</div>', unsafe_allow_html=True)
+            st.markdown(t["explanation"])
+    if t["questions"]:
+        render_quiz(i, t)
+    if t["error"]:
+        st.markdown(f'<div class="dfy-error">{html.escape(t["error"])}</div>', unsafe_allow_html=True)
 
-_, main_col, _ = st.columns([1, 2.5, 1])
 
-with main_col:
-    # Source picker + fixed German target
-    c1, c2 = st.columns(2)
-    with c1:
-        st.selectbox("From", SOURCE_LANGUAGES, key="source_lang")
-    with c2:
-        st.markdown(f"<div style='padding-top:28px'><span style='color:{MUTED};font-size:13px'>To&nbsp;&nbsp;</span><b style='color:{ACCENT};font-size:15px'>{TARGET_LANGUAGE} 🇩🇪</b></div>", unsafe_allow_html=True)
-
-    st.markdown("")
-
-    tab1, tab2 = st.tabs(["✍️ Type text", "🎤 Upload audio"])
-
-    with tab1:
-        st.text_area("Text to translate", height=150, key="src_text",
-                     placeholder="Type text to translate...", label_visibility="collapsed")
-
-    with tab2:
-        audio_file = st.audio_input("Record from mic", key="rec_audio")
-        uploaded = st.file_uploader("Or upload a file",
-                     type=["wav", "mp3", "webm", "m4a", "ogg", "flac"], key="up_audio")
-        if st.session_state.transcript:
-            st.markdown(
-                f"<div style='background:{CARD};border:1px solid {BORDER};border-radius:12px;padding:10px;color:{ACCENT};font-size:12px'><b>Transcript:</b> {st.session_state.transcript}</div>",
+# ------------------------------------------------------------- page
+with st.sidebar:
+    st.markdown('<div class="dfy-brand" style="font-size:1.25rem;margin-bottom:1rem">DEUTSCHEFY</div>',
                 unsafe_allow_html=True)
+    st.button("＋ New Translation", on_click=reset, key="new")
 
-    st.markdown("")
+top = st.columns([6, 1])
+top[0].markdown('<div class="dfy-brand" style="text-align:right;font-size:.85rem;padding-top:.35rem">DEUTSCHEFY</div>',
+                unsafe_allow_html=True)
+if ss.turns:
+    top[1].button("Clear", on_click=reset, key="clear")
 
-    if st.button("🌐 Translate to German", use_container_width=True, type="primary"):
-        text_to_translate = ""
-        audio_bytes = None
+if not ss.turns:
+    st.markdown(
+        '<div class="dfy-hero"><h1>DEUTSCHEFY</h1><p>Type, record, or upload audio. Then ask why a '
+        "translation works the way it does, or take a quick test on it.</p></div>",
+        unsafe_allow_html=True,
+    )
 
-        if uploaded is not None:
-            audio_bytes = uploaded.getvalue()
-        elif audio_file is not None:
-            audio_bytes = audio_file.getvalue()
+for i, t in enumerate(ss.turns):
+    render_turn(i, t)
+    st.write("")
 
-        if audio_bytes:
-            b64 = base64.b64encode(audio_bytes).decode()
-            data_url = f"data:audio/wav;base64,{b64}"
-            with st.spinner("🎙️ Transcribing audio..."):
-                try:
-                    r = requests.post(TRANSCRIBE_URL, json={"audio_base64": data_url, "filename": "audio.wav"}, timeout=120)
-                    if r.status_code == 200:
-                        text_to_translate = r.json().get("transcript", "")
-                        st.session_state.transcript = text_to_translate
-                    else:
-                        st.error(f"Transcription failed (HTTP {r.status_code})")
-                except Exception as e:
-                    st.error(f"Transcription error: {e}")
-        else:
-            text_to_translate = st.session_state.src_text.strip()
+# composer
+st.divider()
+c = st.columns([2, 1, 3])
+c[0].selectbox("From", SOURCE_LANGUAGES, key="source_lang")
+c[1].markdown('<div class="dfy-muted" style="padding-top:2.1rem">To <strong>German</strong></div>',
+              unsafe_allow_html=True)
+a = st.columns(2)
+recording = a[0].audio_input("Record audio", key="mic")
+upload = a[1].file_uploader("Upload audio", type=["mp3", "wav", "m4a", "ogg", "webm", "mp4"], key="upload")
+typed = st.chat_input("Type something to translate into German...")
 
-        if not text_to_translate:
-            st.warning("Please enter text or upload audio to translate.")
-        else:
-            with st.spinner("🌐 Translating to German..."):
-                try:
-                    resp = requests.post(TRANSLATE_URL, json={
-                        "text": text_to_translate,
-                        "source_lang": "auto" if st.session_state.source_lang == "Auto-detect" else st.session_state.source_lang,
-                        "target_lang": TARGET_LANGUAGE,
-                    }, timeout=120)
-                    if resp.status_code == 200:
-                        translation = resp.json().get("translation", "")
-                        st.session_state.translation_result = translation
-                        st.session_state.audio_url = ""
-                        st.session_state.history.insert(0, {
-                            "source": text_to_translate, "target": translation,
-                            "source_lang": st.session_state.source_lang,
-                            "target_lang": TARGET_LANGUAGE,
-                        })
-                        st.session_state.history = st.session_state.history[:30]
-                        st.rerun()
-                    else:
-                        st.error(f"❌ HTTP {resp.status_code}: {resp.text}")
-                except Exception as e:
-                    st.error(f"❌ {e}")
 
-    st.markdown("---")
+def incoming():
+    if typed and typed.strip():
+        return typed.strip()
+    for f in (recording, upload):
+        if f:
+            text = transcribe(f)
+            if text:
+                return text
+    return ""
 
-    if st.session_state.translation_result:
-        st.markdown(f"#### <span style='color:{ACCENT}'>📝 German Translation</span>", unsafe_allow_html=True)
-        st.markdown(
-            f"<div style='background:{CARD};border:1px solid {BORDER};border-radius:12px;padding:16px;color:{TEXT};font-size:15px;line-height:1.6'>{st.session_state.translation_result}</div>",
-            unsafe_allow_html=True)
 
-        st.markdown("")
-        if st.button("🔊 Listen to translation", use_container_width=True):
-            with st.spinner("🔊 Generating audio..."):
-                try:
-                    sr = requests.post(SPEAK_URL, json={
-                        "text": st.session_state.translation_result,
-                        "lang": TARGET_LANGUAGE,
-                    }, timeout=120)
-                    if sr.status_code == 200:
-                        st.session_state.audio_url = sr.json().get("audio_url", "")
-                        st.rerun()
-                    else:
-                        st.error(f"Audio failed (HTTP {sr.status_code})")
-                except Exception as e:
-                    st.error(f"Audio error: {e}")
+new_text = incoming()
+if new_text:
+    translate(new_text)
+    st.rerun()
 
-        if st.session_state.audio_url:
-            st.markdown("")
-            st.audio(st.session_state.audio_url, format="audio/mp3")
-    else:
-        st.markdown(f"<p style='text-align:center;color:{MUTED}'>German translation appears here...</p>", unsafe_allow_html=True)
+if ss.error:
+    st.markdown(f'<div class="dfy-error">{html.escape(ss.error)}</div>', unsafe_allow_html=True)
