@@ -4,7 +4,7 @@ import html
 import requests
 import streamlit as st
 
-APP_URL = "https://www.google.com/search?udm=50&aep=11"
+APP_URL = "https://gemini.google.com"
 TARGET = "German"
 SOURCE_LANGUAGES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic"]
 
