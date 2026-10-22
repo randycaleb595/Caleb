@@ -1,5 +1,5 @@
 import hashlib
-import base_64
+import base64
 import requests
 import streamlit as st
 APP_URL = "https://gemini.google.com"
