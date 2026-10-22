@@ -1,13 +1,8 @@
-import base64
-import hashlib
-import html
 import requests
 import streamlit as st
-
 APP_URL = "https://gemini.google.com"
-TARGET = "German"
-SOURCE_LANGUAGES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic"]
-
+TARGET = "Kiswahili"
+SOURCE_LANGUAGES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic","Luganda",]
 st.set_page_config(page_title="Deutschefy", page_icon="🇩🇪", layout="centered")
 
 THEME = """
@@ -90,7 +85,7 @@ st.markdown(THEME, unsafe_allow_html=True)
 
 # ------------------------------------------------------------- the app's backend (HTTP)
 def call(fn, payload):
-    r = requests.post(f"{APP_URL}/functions/{fn}", json=payload, timeout=180)
+    r = requests.post(f"{APP_URL}/functions/{fn}", json=payload, timeout=500)
     try:
         data = r.json()
     except ValueError:
@@ -118,7 +113,7 @@ def reset():
 def translate(text):
     ss.error = ""
     try:
-        with st.spinner("Translating to German…"):
+        with st.spinner("Translating to Kiswahili…"):
             res = call("translateText", {"text": text, "source_lang": src_code(ss.source_lang), "target_lang": TARGET})
         ss.turns.append({
             "source": text, "source_lang": ss.source_lang, "translation": res["translation"],
