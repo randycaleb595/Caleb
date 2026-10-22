@@ -3,7 +3,7 @@ import hashlib
 import base64
 import requests
 import streamlit as st
-APP_URL = "https://gemini.google.com"
+APP_URL = "https://nexusai123.base44.app"
 TARGET = "Kiswahili"
 SOURCE_LANGUAGES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic","Luganda",]
 st.set_page_config(page_title="Deutschefy", page_icon="🇩🇪", layout="centered")
