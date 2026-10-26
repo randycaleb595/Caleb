@@ -5,7 +5,6 @@ import base64
 from datetime import datetime
 
 import streamlit as st
-import google.generativeai as genai
 from gtts import gTTS
 
 # ---------------------------------------------------------------- config
