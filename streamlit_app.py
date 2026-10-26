@@ -5,7 +5,7 @@ import base64
 from datetime import datetime
 GEMINI_API_KEY="AQ.Ab8RN6IVERIhwv9TrfZkfuS5R2pmQaI7aNYNkJ3hSEU5Ki_Dkw"
 import streamlit as st
-import google.generativeai as genai
+import gemini.google as genai
 from gtts import gTTS
 
 # ---------------------------------------------------------------- config
