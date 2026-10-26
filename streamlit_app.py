@@ -5,7 +5,7 @@ import base64
 from datetime import datetime
 
 import streamlit as st
-from gtts import gTTS
+
 
 # ---------------------------------------------------------------- config
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
