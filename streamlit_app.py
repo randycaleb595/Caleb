@@ -1,22 +1,34 @@
 import os
-import io
 import json
-import base64
-from datetime import datetime
-GEMINI_API_KEY="AQ.Ab8RN6IVERIhwv9TrfZkfuS5R2pmQaI7aNYNkJ3hSEU5Ki_Dkw"
+import io
 import streamlit as st
-import gemini.google as genai
+import google.generativeai as genai
 from gtts import gTTS
 
-# ---------------------------------------------------------------- config
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
-TEXT_MODEL = "gemini-1.5-flash"
-AUDIO_MODEL = "gemini-1.5-pro"  # accepts audio input
+# ------------------------------------------------------------
+# Config / secrets
+# ------------------------------------------------------------
+# Set this in your environment:
+# export GEMINI_API_KEY="your_key_here"
+# or in Streamlit secrets, then read it from st.secrets
+# Recommended: use environment variables in production.
+# DO NOT hardcode API keys in the source file.
 
-SOURCES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic"]
+if "GEMINI_API_KEY" not in os.environ:
+    st.error("Missing GEMINI_API_KEY. Set it in your environment before running this app.")
+    st.stop()
+
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+TEXT_MODEL = "gemini-1.5-flash"
+AUDIO_MODEL = "gemini-1.5-pro"  # Works for audio input if supported by your SDK/backend
 TARGET = "German"
 
-# ---------------------------------------------------------------- theme
+SOURCES = ["Auto-detect", "English", "French", "Spanish", "Portuguese", "Chinese", "Arabic"]
+
+# ------------------------------------------------------------
+# Theme
+# ------------------------------------------------------------
 st.set_page_config(page_title="Deutschefy", page_icon="🇩🇪", layout="centered")
 
 st.markdown(
@@ -50,24 +62,45 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------------------------------------------------------- helpers
-def call_gemini(prompt, model=TEXT_MODEL, json_mode=False):
-    gen_cfg = {"response_mime_type": "application/json"} if json_mode else None
-    resp = genai.GenerativeModel(model).generate_content(
-        prompt, generation_config=gen_cfg
-    )
-    return resp.text
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+def safe_call_gemini(prompt, model=TEXT_MODEL, json_mode=False):
+    try:
+        generation_config = None
+        if json_mode:
+            try:
+                generation_config = genai.types.GenerationConfig(response_mime_type="application/json")
+            except AttributeError:
+                generation_config = {"response_mime_type": "application/json"}
 
+        response = genai.GenerativeModel(model).generate_content(
+            prompt,
+            generation_config=generation_config
+        )
+
+        text = getattr(response, "text", None)
+        if text is None:
+            if hasattr(response, "candidates") and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                    parts = []
+                    for part in candidate.content.parts:
+                        parts.append(getattr(part, "text", ""))
+                    text = "".join(parts)
+        return (text or "").strip()
+    except Exception as e:
+        st.warning(f"Gemini request failed: {e}")
+        return ""
 
 def translate_text(text, src):
     src_clause = "Detect the source language automatically." if src == "Auto-detect" else f"Source language: {src}."
     prompt = (
         f"{src_clause} Translate the following text into {TARGET}. "
-        "Return ONLY the {TARGET} translation, no notes, no romanization, no extra text.\n\n"
+        f"Return ONLY the {TARGET} translation, no notes, no romanization, no extra text.\n\n"
         f"Text: {text}"
-    ).replace("{TARGET}", TARGET)
-    return call_gemini(prompt).strip()
-
+    )
+    return safe_call_gemini(prompt)
 
 def explain_translation(text, translation, src):
     explain_lang = "the source language" if src != "Auto-detect" else "the original language of the input"
@@ -78,8 +111,36 @@ def explain_translation(text, translation, src):
         "works — cover key grammar, word order, articles/cases, and any idioms. "
         "Use Markdown with short headings and bullet points. Keep it under 220 words."
     )
-    return call_gemini(prompt).strip()
+    return safe_call_gemini(prompt)
 
+def parse_json_list(raw):
+    if raw is None:
+        return []
+    text = str(raw).strip()
+
+    # If the model wrapped the JSON in Markdown fences
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:]
+        text = text.strip()
+
+    # Try direct parse
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # Try to extract a JSON array if the model added commentary
+    start = text.find("[")
+    end = text.rfind("]")
+    if start != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except Exception:
+            pass
+
+    return []
 
 def generate_quiz(text, translation, src):
     explain_lang = "the source language" if src != "Auto-detect" else "the original language of the input"
@@ -90,111 +151,157 @@ def generate_quiz(text, translation, src):
         "Return JSON: a list of objects {question, options:[4 strings], correct:0-3}. "
         "No extra commentary."
     )
-    raw = call_gemini(prompt, json_mode=True)
-    try:
-        return json.loads(raw)
-    except Exception:
-        # fall back: strip code fences if present
-        cleaned = raw.strip().strip("`")
-        if cleaned.lower().startswith("json"):
-            cleaned = cleaned[4:]
-        return json.loads(cleaned)
 
+    raw = safe_call_gemini(prompt, json_mode=True)
+    data = parse_json_list(raw)
+    if isinstance(data, list):
+        return data[:4]
+    return []
 
 def transcribe_audio(audio_bytes, mime):
-    part = {"mime_type": mime, "data": audio_bytes}
-    resp = genai.GenerativeModel(AUDIO_MODEL).generate_content(
-        [part, "Transcribe this audio accurately. Output only the transcript, no commentary."]
-    )
-    return resp.text.strip()
-
+    try:
+        response = genai.GenerativeModel(AUDIO_MODEL).generate_content(
+            [
+                {"mime_type": mime, "data": audio_bytes},
+                "Transcribe this audio accurately. Output only the transcript, no commentary."
+            ]
+        )
+        text = getattr(response, "text", None)
+        if text is None and hasattr(response, "candidates"):
+            text = response.candidates[0].content.parts[0].text
+        return (text or "").strip()
+    except Exception as e:
+        st.warning(f"Audio transcription failed: {e}")
+        return ""
 
 def speak_german(text):
     buf = io.BytesIO()
-    gTTS(text, lang="de").write_to_fp(buf)
-    return buf.getvalue()
+    try:
+        gTTS(text, lang="de").write_to_fp(buf)
+        return buf.getvalue()
+    except Exception as e:
+        st.warning(f"Text-to-speech failed: {e}")
+        return b""
 
-# ---------------------------------------------------------------- state
+# ------------------------------------------------------------
+# State
+# ------------------------------------------------------------
 if "messages" not in st.session_state:
-    st.session_state.messages = []  # each: {query, src, translation, audio_url, explanation, quiz, quiz_answers}
+    st.session_state.messages = []
 
-# ---------------------------------------------------------------- header
+# ------------------------------------------------------------
+# Header
+# ------------------------------------------------------------
 st.markdown('<div class="dfy-header">DEUTSCHEFY</div>', unsafe_allow_html=True)
 
-# source language selector (no subtitle text)
+# source selector
 src = st.selectbox("Source language", SOURCES, index=0, label_visibility="collapsed")
 
-# input row: text + audio record + file upload
+# input area
 col_text, col_audio = st.columns([4, 1])
 with col_text:
-    user_text = st.text_area("Text", height=72, label_visibility="collapsed",
-                             placeholder="Type here, or record / upload audio below…")
+    user_text = st.text_area(
+        "Text",
+        height=72,
+        label_visibility="collapsed",
+        placeholder="Type here, or record / upload audio below…"
+    )
 with col_audio:
     recorded = st.audio_input("Record")
 
-uploaded = st.file_uploader("Or upload audio", type=["mp3", "wav", "m4a", "ogg", "webm"], label_visibility="collapsed")
+uploaded = st.file_uploader(
+    "Or upload audio",
+    type=["mp3", "wav", "m4a", "ogg", "webm"],
+    label_visibility="collapsed"
+)
 
 submit = st.button("Translate")
 
-# ---------------------------------------------------------------- submit
+# ------------------------------------------------------------
+# Submit handler
+# ------------------------------------------------------------
 def add_message(query, src_lang):
     translation = translate_text(query, src_lang)
+    if not translation:
+        st.warning("Translation failed. Please try again or check your API key/model access.")
+        return
+
     st.session_state.messages.append({
         "query": query,
         "src": src_lang,
         "translation": translation,
         "explanation": None,
         "quiz": None,
-        "quiz_answers": {},
     })
 
 if submit:
     text_to_send = user_text.strip()
+
     if not text_to_send and (recorded or uploaded):
         with st.spinner("Transcribing audio…"):
             if recorded:
                 text_to_send = transcribe_audio(recorded.getvalue(), recorded.type)
             elif uploaded:
                 text_to_send = transcribe_audio(uploaded.getvalue(), uploaded.type)
+
     if text_to_send:
         with st.spinner("Translating…"):
             add_message(text_to_send, src)
         st.rerun() if hasattr(st, "rerun") else None
 
-# ---------------------------------------------------------------- feed
+# ------------------------------------------------------------
+# Feed
+# ------------------------------------------------------------
 for i, m in enumerate(st.session_state.messages):
     st.markdown('<div class="dfy-label">You</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="dfy-bubble-user">{m["query"]}</div>', unsafe_allow_html=True)
+
     st.markdown(f'<div class="dfy-label">{TARGET}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="dfy-bubble-de">{m["translation"]}</div>', unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
+
     with c1:
         if st.button("🔊 Listen", key=f"listen-{i}"):
-            st.audio(speak_german(m["translation"]), format="audio/mp3")
+            audio_bytes = speak_german(m["translation"])
+            if audio_bytes:
+                st.audio(audio_bytes, format="audio/mp3")
+
     with c2:
         if st.button("💡 Why?", key=f"why-{i}"):
-            m["explanation"] = m["explanation"] or explain_translation(m["query"], m["translation"], m["src"])
+            if not m["explanation"]:
+                m["explanation"] = explain_translation(m["query"], m["translation"], m["src"])
+
     with c3:
         if st.button("✅ Test me", key=f"quiz-{i}"):
-            m["quiz"] = m["quiz"] or generate_quiz(m["query"], m["translation"], m["src"])
+            if not m["quiz"]:
+                m["quiz"] = generate_quiz(m["query"], m["translation"], m["src"])
 
-    if m["explanation"]:
+    if m.get("explanation"):
         with st.expander("Why this translation?", expanded=True):
             st.markdown(m["explanation"])
 
-    if m["quiz"]:
+    if m.get("quiz"):
         with st.expander("Practice test", expanded=True):
             for q_idx, q in enumerate(m["quiz"][:4]):
-                st.markdown(f"**Q{q_idx+1}. {q.get('question')}**")
+                st.markdown(f"**Q{q_idx+1}. {q.get('question', '')}**")
                 opts = q.get("options", [])
                 correct = q.get("correct", 0)
-                chosen = st.radio(f"options-{i}-{q_idx}", opts, index=None, label_visibility="collapsed", key=f"radio-{i}-{q_idx}")
+
+                chosen = st.radio(
+                    f"options-{i}-{q_idx}",
+                    opts,
+                    index=None,
+                    label_visibility="collapsed",
+                    key=f"radio-{i}-{q_idx}"
+                )
+
                 if chosen is not None:
                     if opts.index(chosen) == correct:
                         st.success("Correct ✅")
                     else:
                         st.error(f"Not quite — answer: {opts[correct]}")
+
             if st.button("Close test", key=f"close-{i}"):
                 m["quiz"] = None
                 st.rerun() if hasattr(st, "rerun") else None
