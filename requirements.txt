@@ -1,0 +1,5 @@
+requests
+base 64
+streamlit
+google-generativeai
+gTTS
