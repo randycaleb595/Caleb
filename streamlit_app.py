@@ -1,26 +1,18 @@
 import os
-import json
-import io
 import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 
-# ------------------------------------------------------------
-# Config / secrets
-# ------------------------------------------------------------
-# Set this in your environment:
-# export GEMINI_API_KEY="your_key_here"
-# or in Streamlit secrets, then read it from st.secrets
-# Recommended: use environment variables in production.
-# DO NOT hardcode API keys in the source file.
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
 
-if "GEMINI_API_KEY" not in os.environ:
-    st.error("Missing GEMINI_API_KEY. Set it in your environment before running this app.")
+if not GEMINI_API_KEY:
+    st.error("Missing GEMINI_API_KEY. Add it in Streamlit secrets or environment variables.")
     st.stop()
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+genai.configure(api_key=GEMINI_API_KEY)import os
 
-TEXT_MODEL = "gemini-1.5-flash"
+
+TEXT_MODEL = "gemini-1.5-flash_extended"
 AUDIO_MODEL = "gemini-1.5-pro"  # Works for audio input if supported by your SDK/backend
 TARGET = "German"
 
