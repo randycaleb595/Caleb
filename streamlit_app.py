@@ -1,6 +1,4 @@
 import os
-import json
-import io
 import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
@@ -11,8 +9,6 @@ if not api_key:
     st.stop()
 
 genai.configure(api_key=api_key)
-
-
 
 TEXT_MODEL = "gemini-1.5-flash"
 AUDIO_MODEL = "gemini-1.5-pro"  # Works for audio input if supported by your SDK/backend
