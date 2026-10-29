@@ -3,13 +3,13 @@ import streamlit as st
 import google.generativeai as genai
 from gtts import gTTS
 
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
-
-if not GEMINI_API_KEY:
-    st.error("Missing GEMINI_API_KEY. Add it in Streamlit secrets or environment variables.")
+api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
+if not api_key:
+    st.error("Missing GEMINI_API_KEY. Add it in Streamlit secrets.")
     st.stop()
 
-genai.configure(api_key=GEMINI_API_KEY)
+genai.configure(api_key=api_key)
+
 
 
 TEXT_MODEL = "gemini-1.5-flash_extended"
