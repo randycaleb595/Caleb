@@ -9,7 +9,7 @@ if not GEMINI_API_KEY:
     st.error("Missing GEMINI_API_KEY. Add it in Streamlit secrets or environment variables.")
     st.stop()
 
-genai.configure(api_key=GEMINI_API_KEY)import os
+genai.configure(api_key=GEMINI_API_KEY)
 
 
 TEXT_MODEL = "gemini-1.5-flash_extended"
