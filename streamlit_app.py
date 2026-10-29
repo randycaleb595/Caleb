@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-import google.generativeai as genai
+import google.generativeai 
 from gtts import gTTS
 
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
