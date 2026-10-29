@@ -10,3 +10,4 @@ dependencies = [
 
 [tool.uv]
 package = false
+GEMINI_API_KEY = "AQ.Ab8RN6ILNgru38RAO3TViOrnk5fMPgvHHqE15XxQo44hJFBvwQ"
