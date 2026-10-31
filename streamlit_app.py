@@ -7,7 +7,7 @@ import requests
 import streamlit as st
 
 NEXUS = "https://nexusai123.base44.app/functions"
-DEFAULT_TARGET = "German"
+DEFAULT_TARGET = "Kiswahili"
 TIMEOUT = 180
 
 LANGUAGE_GROUPS = {
@@ -62,7 +62,7 @@ LANGUAGE_GROUPS = {
 ALL_LANGUAGES = [lang for group in LANGUAGE_GROUPS.values() for lang in group]
 SOURCE_LANGUAGES = ["Auto-detect"] + ALL_LANGUAGES
 
-st.set_page_config(page_title="DEUSCHEFY", page_icon="GHP", layout="centered")
+st.set_page_config(page_title="CAESURA", page_icon="WW", layout="centered")
 
 THEME = """
 <style>
@@ -363,14 +363,14 @@ with st.sidebar:
     st.markdown('<div class="dfy-muted">Powered by the Nexus backend.</div>', unsafe_allow_html=True)
 
 top = st.columns([6, 1])
-top[0].markdown('<div class="dfy-brand" style="text-align:right;font-size:.85rem;padding-top:.35rem">DEUTSCHEFY</div>',
+top[0].markdown('<div class="dfy-brand" style="text-align:right;font-size:.85rem;padding-top:.35rem">CAESURA</div>',
                 unsafe_allow_html=True)
 if ss.turns:
     top[1].button("Clear", on_click=reset, key="clear")
 
 if not ss.turns:
     st.markdown(
-        f'<div class="dfy-hero"><h1>DEUTSCHEFY</h1><p>Type in any of {len(ALL_LANGUAGES)} languages, '
+        f'<div class="dfy-hero"><h1>CAESURA</h1><p>Type in any of {len(ALL_LANGUAGES)} languages, '
         f"record, or upload audio. Then ask why a translation works the way it does, "
         f"or take a quick test on it.</p></div>",
         unsafe_allow_html=True,
