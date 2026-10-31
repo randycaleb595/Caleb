@@ -229,10 +229,11 @@ ss.setdefault("error", "")
 ss.setdefault("quiz_count", 4)
 ss.setdefault("target_lang", DEFAULT_TARGET)
 ss.setdefault("source_lang", "Auto-detect")
+ss.setdefault("draft", "")
 
 
 def reset():
-    ss.turns, ss.error = [], ""
+    ss.turns, ss.error, ss.draft = [], "", ""
 
 
 def translate(text):
@@ -381,32 +382,46 @@ for i, t in enumerate(ss.turns):
     st.write("")
 
 # composer
-st.divider()
-c = st.columns([2, 1, 3])
-c[0].selectbox("From", SOURCE_LANGUAGES, key="source_lang")
-c[1].markdown(f'<div class="dfy-muted" style="padding-top:2.1rem">To <strong>{ss.target_lang}</strong></div>',
-              unsafe_allow_html=True)
-a = st.columns(2)
-recording = a[0].audio_input("Record audio", key="mic")
-upload = a[1].file_uploader("Upload audio", type=["mp3", "wav", "m4a", "ogg", "webm", "mp4"], key="upload")
-typed = st.chat_input(f"Type something to translate into {ss.target_lang}...")
+with st.container(border=True):
+    c = st.columns([2, 2, 3])
+    c[0].selectbox("From", SOURCE_LANGUAGES, key="source_lang")
+    c[1].selectbox("Translate into", ALL_LANGUAGES,
+                   index=ALL_LANGUAGES.index(ss.target_lang), key="target_lang")
+    clear_btn = c[2].button("Clear")
 
+    ss.draft = st.text_area(
+        "Type or paste text",
+        value=ss.draft,
+        height=150,
+        placeholder="Type something to translate...",
+        key="draft",
+    )
 
-def incoming():
-    if typed and typed.strip():
-        return typed.strip()
-    for f in (recording, upload):
-        if f:
-            text = transcribe(f)
-            if text:
-                return text
-    return ""
+    a = st.columns([1, 1, 1, 2])
+    recording = a[0].audio_input("🎙 Record audio", key="mic")
+    upload = a[1].file_uploader(
+        "📁 Upload audio",
+        type=["mp3", "wav", "m4a", "ogg", "webm", "mp4"],
+        key="upload",
+    )
+    translate_btn = a[2].button("Translate", type="primary")
 
+    if clear_btn:
+        ss.draft = ""
+        st.rerun()
 
-new_text = incoming()
-if new_text:
-    translate(new_text)
-    st.rerun()
+    if translate_btn:
+        user_text = ss.draft.strip()
+        if not user_text:
+            for f in (recording, upload):
+                if f:
+                    user_text = transcribe(f)
+                    if user_text:
+                        break
+        if user_text:
+            ss.draft = ""
+            translate(user_text)
+            st.rerun()
 
 if ss.error:
     st.markdown(f'<div class="dfy-error">{html.escape(ss.error)}</div>', unsafe_allow_html=True)
