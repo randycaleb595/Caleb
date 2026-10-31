@@ -354,7 +354,7 @@ def render_turn(i, t):
 
 # ------------------------------------------------------------- page
 with st.sidebar:
-    st.markdown('<div class="dfy-brand" style="font-size:1.25rem;margin-bottom:1rem">DEUTSCHEFY</div>',
+    st.markdown('<div class="dfy-brand" style="font-size:1.25rem;margin-bottom:1rem">CAESURA</div>',
                 unsafe_allow_html=True)
     st.button("＋ New Translation", on_click=reset, key="new")
     st.selectbox("Translate into", ALL_LANGUAGES,
